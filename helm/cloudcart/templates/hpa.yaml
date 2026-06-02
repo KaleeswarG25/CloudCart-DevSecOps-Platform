@@ -1,0 +1,26 @@
+{{- if .Values.autoscaling.enabled }} # Fixed
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+
+metadata:
+  name: cloudcart-frontend
+
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cloudcart-frontend
+
+  minReplicas: {{ .Values.autoscaling.minReplicas }} # Fixed
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }} # Fixed
+
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }} # Fixed
+
+{{- end }}

@@ -1,0 +1,35 @@
+replicaCount: 2
+
+image:
+  repository: cloudcart-frontend
+  tag: v2
+  pullPolicy: Never
+
+service:
+  type: NodePort
+  port: 80
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+config:
+  APP_NAME: CloudCart
+  ENVIRONMENT: dev
+  LOG_LEVEL: info
+
+secret:
+  DB_USERNAME: admin
+  DB_PASSWORD: password123
+
+# Change 'hpa:' to 'autoscaling:'
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 50

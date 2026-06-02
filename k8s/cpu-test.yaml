@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: cpu-test
+  namespace: dev
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: cpu-test
+
+  template:
+    metadata:
+      labels:
+        app: cpu-test
+
+    spec:
+      containers:
+        - name: cpu-test
+
+          image: polinux/stress
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+
+          command:
+            - stress
+
+          args:
+            - "--cpu"
+            - "4"

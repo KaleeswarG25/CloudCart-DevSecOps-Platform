@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudcart-frontend
+spec:
+  replicas: {{ .Values.replicaCount }} # Fixed brackets
+  selector:
+    matchLabels:
+      app: cloudcart-frontend
+  template:
+    metadata:
+      labels:
+        app: cloudcart-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }} # Fixed brackets
+          ports:
+            - containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: cloudcart-config
+            - secretRef:
+                name: cloudcart-secret
+          resources:
+{{ toYaml .Values.resources | indent 12 }} # Fixed brackets and indentation to 12 spaces
+          readinessProbe:
+            httpGet:
+              path: /index.html
+              port: 80
+            initialDelaySeconds: 2
+            periodSeconds: 10
