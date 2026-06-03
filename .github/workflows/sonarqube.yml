@@ -19,8 +19,9 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
           # FIX FOR NGROK TUNNEL: Forces HTTP/1.1 to prevent stream reset errors
-          SONAR_SCANNER_OPTS: "-Dokhttp.protocols=http/1.1 -Dsonar.web.javaAdditionalOpts=-Hngrok-skip-browser-warning:true""
+          SONAR_SCANNER_OPTS: "-Dokhttp.protocols=http/1.1 -Dsonar.web.javaAdditionalOpts=-Hngrok-skip-browser-warning:true"
 
       # If you wish to fail your job when the Quality Gate is red, uncomment the
       # following lines. This would typically be used to fail a deployment.
