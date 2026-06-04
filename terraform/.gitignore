@@ -1,0 +1,6 @@
+
+# Terraform exclusions
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
