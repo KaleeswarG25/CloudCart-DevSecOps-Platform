@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: your_dockerhub_username/cloudcart-frontend   # <--- Change this to your exact Docker Hub username!
+  repository: eswar2506/cloudcart-frontend   # <--- Change this to your exact Docker Hub username!
   tag: latest                                              # <--- Make sure this matches the tag GitHub pushes
   pullPolicy: Always
 service:
