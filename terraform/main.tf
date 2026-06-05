@@ -52,3 +52,13 @@ module "asg" {
   instance_type     = local.chosen_instance_type
   target_group_arn  = module.alb.tg_arn
 }
+module "eks" {
+  source = "./modules/eks"
+
+  environment = terraform.workspace
+
+  subnet_ids = [
+    module.vpc.subnet_1_id,
+    module.vpc.subnet_2_id
+  ]
+}
