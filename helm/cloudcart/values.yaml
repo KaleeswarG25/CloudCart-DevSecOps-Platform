@@ -1,10 +1,9 @@
 replicaCount: 2
 
 image:
-  repository: cloudcart-frontend
-  tag: v2
-  pullPolicy: Never
-
+  repository: your_dockerhub_username/cloudcart-frontend   # <--- Change this to your exact Docker Hub username!
+  tag: latest                                              # <--- Make sure this matches the tag GitHub pushes
+  pullPolicy: Always
 service:
   type: NodePort
   port: 80
