@@ -12,6 +12,7 @@ spec:
   rules:
     - http:
         paths:
+          # Route 1: Main Frontend Application
           - path: /
             pathType: Prefix
             backend:
@@ -19,10 +20,11 @@ spec:
                 name: cloudcart-frontend
                 port:
                   number: 80
+          # Route 2: Cross-Namespace Link directly to the real SonarQube Service
           - path: /sonar
             pathType: Prefix
             backend:
               service:
-                name: sonarqube-bridge
+                name: sonarqube-sonarqube
                 port:
                   number: 9000
