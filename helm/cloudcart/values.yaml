@@ -1,4 +1,4 @@
-replicaCount: 2
+replicaCount: 1
 
 image:
   repository: eswar2506/cloudcart-frontend   # <--- Change this to your exact Docker Hub username!

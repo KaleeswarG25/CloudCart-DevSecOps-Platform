@@ -11,6 +11,8 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
@@ -29,3 +31,21 @@ jobs:
         tags: |
           ${{ secrets.DOCKERHUB_USERNAME }}/cloudcart-frontend:${{ github.sha }}
           ${{ secrets.DOCKERHUB_USERNAME }}/cloudcart-frontend:latest
+
+    - name: Update Helm Values
+      run: |
+        sed -i "s|repository:.*|repository: ${{ secrets.DOCKERHUB_USERNAME }}/cloudcart-frontend|g" helm/cloudcart/values.yaml
+        sed -i "s|tag:.*|tag: ${{ github.sha }}|g" helm/cloudcart/values.yaml
+
+    - name: Commit and Push Changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add helm/cloudcart/values.yaml
+        git commit -m "Update image tag to ${{ github.sha }}" || true
+        git push
+
+    - name: Trigger ArgoCD Sync
+      run: |
+        echo "ArgoCD will auto-sync due to configured polling"
+        echo "Or use ArgoCD API: argocd app sync cloudcart --auth-token ${{ secrets.ARGOCD_TOKEN }}"

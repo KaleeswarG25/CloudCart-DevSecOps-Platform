@@ -1,4 +1,4 @@
-﻿resource "aws_security_group" "web_sg" {
+resource "aws_security_group" "web_sg" {
   name        = "cloudcart-${var.environment}-web-sg"
   description = "Allow HTTP and SSH traffic"
   vpc_id      = var.vpc_id
@@ -23,6 +23,6 @@
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
   tags = { Name = "cloudcart-${var.environment}-web-sg" }
 }

@@ -58,7 +58,24 @@ module "eks" {
   environment = terraform.workspace
 
   subnet_ids = [
-    module.vpc.subnet_1_id,
-    module.vpc.subnet_2_id
+    module.vpc.private_subnet_1_id,
+    module.vpc.private_subnet_2_id
   ]
+}
+
+# STEP 9: Update RDS to use private subnets
+module "rds" {
+  source = "./modules/rds"
+
+  environment = terraform.workspace
+
+  subnet_ids = [
+    module.vpc.private_subnet_1_id,
+    module.vpc.private_subnet_2_id
+  ]
+
+  security_group_id = module.security_group.sg_id
+
+  db_username = var.db_username
+  db_password = var.db_password
 }

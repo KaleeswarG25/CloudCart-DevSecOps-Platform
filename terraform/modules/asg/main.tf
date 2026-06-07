@@ -41,8 +41,8 @@ resource "aws_launch_template" "asg_template" {
 # The Auto Scaling Engine driving elasticity across subnets
 resource "aws_autoscaling_group" "main_asg" {
   name_prefix         = "cloudcart-${var.environment}-asg-"
-  desired_capacity    = 2
-  max_size            = 4
+  desired_capacity    = 1
+  max_size            = 2
   min_size            = 1
   vpc_zone_identifier = var.subnet_ids
   target_group_arns   = [var.target_group_arn] # Chains directly into your ALB!
