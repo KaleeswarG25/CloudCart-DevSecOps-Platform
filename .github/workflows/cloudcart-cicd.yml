@@ -1,29 +1,55 @@
-name: CloudCart CI (Docker Hub)
+name: CloudCart Unified DevSecOps Pipeline
 
 on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'terraform/**' # Let the terraform.yml run separately only when infra files change
 
 jobs:
-  build-and-push:
+  devsecops-pipeline:
+    name: Code Quality, Security Scan, and Continuous Delivery
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout Code
+    - name: 1. Checkout Code
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0 # Required for accurate SonarQube Git blame metrics
 
-    - name: Log in to Docker Hub
+    - name: 2. SonarQube Code Analysis
+      uses: SonarSource/sonarqube-scan-action@v6
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        SONAR_SCANNER_OPTS: "-Dokhttp.protocols=http/1.1"
+        NGROK_SKIP_BROWSER_WARNING: "true"
+
+    - name: 3. Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: 4. Build Local Test Image
+      run: |
+        docker build -t cloudcart-frontend:test ./app/frontend
+
+    - name: 5. Trivy Vulnerability Security Scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: cloudcart-frontend:test
+        format: table
+        exit-code: 1 # Strictly blocks the pipeline if CRITICAL or HIGH vulnerabilities are found!
+        severity: CRITICAL,HIGH
+
+    - name: 6. Log in to Docker Hub
+      if: success() # Only execution block if the code is proven clean by SonarQube & Trivy
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build and Push Frontend Image
+    - name: 7. Build and Push Production Image
+      if: success()
       uses: docker/build-push-action@v6
       with:
         context: ./app/frontend
@@ -32,20 +58,16 @@ jobs:
           ${{ secrets.DOCKERHUB_USERNAME }}/cloudcart-frontend:${{ github.sha }}
           ${{ secrets.DOCKERHUB_USERNAME }}/cloudcart-frontend:latest
 
-    - name: Update Helm Values
+    - name: 8. Dynamically Update Helm Values Manifest
+      if: success()
       run: |
-        sed -i "s|repository:.*|repository: ${{ secrets.DOCKERHUB_USERNAME }}/cloudcart-frontend|g" helm/cloudcart/values.yaml
-        sed -i "s|tag:.*|tag: ${{ github.sha }}|g" helm/cloudcart/values.yaml
-
-    - name: Commit and Push Changes
+        sed -i -E "s|(^[[:space:]]*repository:[[:space:]]*).*|\1${{ secrets.DOCKERHUB_USERNAME }}/cloudcart-frontend|g" helm/cloudcart/values.yaml
+        sed -i -E "s|(^[[:space:]]*tag:[[:space:]]*).*|\1\"${{ github.sha }}\"|g" helm/cloudcart/values.yaml
+    - name: 9. Commit & Push Helm Updates to GitOps
+      if: success()
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add helm/cloudcart/values.yaml
-        git commit -m "Update image tag to ${{ github.sha }}" || true
+        git commit -m "chore(gitops): update frontend deployment tag to ${{ github.sha }} [skip ci]" || true
         git push
-
-    - name: Trigger ArgoCD Sync
-      run: |
-        echo "ArgoCD will auto-sync due to configured polling"
-        echo "Or use ArgoCD API: argocd app sync cloudcart --auth-token ${{ secrets.ARGOCD_TOKEN }}"
