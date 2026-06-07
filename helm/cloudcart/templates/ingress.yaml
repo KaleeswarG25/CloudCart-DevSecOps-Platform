@@ -22,3 +22,10 @@ spec:
             name: cloudcart-frontend
             port:
               number: 80
+      - path: /sonar
+        pathType: Prefix
+        backend:
+          service:
+            name: sonarqube-service
+            port:
+              number: 9000
