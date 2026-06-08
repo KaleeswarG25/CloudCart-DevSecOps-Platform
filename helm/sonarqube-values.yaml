@@ -1,0 +1,8 @@
+resources:
+  requests:
+    memory: 256Mi
+  limits:
+    memory: 3Gi
+monitoringPasscode: "mysecretpasscode"
+community:
+  enabled: true
