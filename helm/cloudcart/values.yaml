@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: eswar2506/cloudcart-frontend
-  tag: "573ee0cebacb0ab677664b675109de024182dff5"
+  tag: "d1701dce5cb07c75f3dbf0736a71e70a1980cfab"
   pullPolicy: Always
 service:
   type: NodePort
