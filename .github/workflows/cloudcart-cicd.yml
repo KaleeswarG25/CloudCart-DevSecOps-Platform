@@ -23,7 +23,8 @@ jobs:
       continue-on-error: true
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: "http://localhost:9001"
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} # Let GitHub use your specific URL configuration
+
         
 
     - name: 3. Set up Docker Buildx
