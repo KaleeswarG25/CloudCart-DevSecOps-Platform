@@ -1,4 +1,4 @@
-Markdown# CloudCart DevSecOps Platform
+# CloudCart DevSecOps Platform
 
 A production-grade, high-availability infrastructure topology engineered on Amazon Web Services (AWS). This architecture utilizes an automated GitOps continuous delivery engine, shift-left security orchestration, and a unified metrics-and-logs telemetry engine.
 
@@ -61,7 +61,7 @@ terraform init
 terraform validate
 terraform plan
 terraform apply --auto-approve
-⚠️ Infrastructure Note: This cycle establishes underlying networks, security groupings, subnets, and database systems. Completion takes approximately 10–15 minutes.Step 2: Establish Secure Cluster Access AuthenticationUpdate your local terminal configuration context to securely interface with the target managed EKS control plane:Bashaws eks update-kubeconfig --region ap-south-1 --name CloudCart-Cluster
+Step 2: Establish Secure Cluster Access AuthenticationUpdate your local terminal configuration context to securely interface with the target managed EKS control plane:Bashaws eks update-kubeconfig --region ap-south-1 --name CloudCart-Cluster
 
 # Verify node registrations across availability zones
 kubectl get nodes -o wide
