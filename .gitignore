@@ -17,3 +17,66 @@ kubectl.exe
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
+# ====================================================================
+# CLOUDCART PROJECT ROOT GITIGNORE
+# ====================================================================
+
+# --- OS & System Files ---
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# --- Dev Environment & Editor Tools ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# --- Platform CLI Executables & Binaries ---
+eksctl.exe
+eksctl.zip
+*.exe
+*.zip
+*.tar.gz
+
+# --- Node / React Frontend Assets & Dependencies ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+app/frontend/build/
+app/frontend/dist/
+app/frontend/.env.local
+app/frontend/.env.development.local
+app/frontend/.env.test.local
+
+# --- CRITICAL SECURITY: Block Secrets & Environment Credentials ---
+app/frontend/.env.production
+terraform/terraform.tfvars
+terraform/*.tfvars.json
+
+# --- Terraform State & Local Cache ---
+**/.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+*.backend
+
+# --- Kubernetes Manifest Overrides & Scratchpads ---
+sync-override.json
+patch-tolerations.json
+cloudcart-app.yaml
+platform-ingress.yaml
+root-application.yaml
+sonar-bridge.yaml
+sonar-ingress.yaml
+sonar-pointer.yaml
+
+# --- Framework Testing Metrics Cache ---
+.sixth/
+.scannerwork/
+.sonar/
