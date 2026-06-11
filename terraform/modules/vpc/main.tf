@@ -72,7 +72,7 @@ resource "aws_subnet" "private_subnet_2" {
 resource "aws_eip" "nat_eip" {
   domain = "vpc"
 }
-*/
+
 
 /* STEP 4: Create NAT Gateway (placed inside public_subnet_1)
 resource "aws_nat_gateway" "nat" {
@@ -80,7 +80,7 @@ resource "aws_nat_gateway" "nat" {
   subnet_id     = aws_subnet.public_subnet_1.id
   tags          = { Name = "cloudcart-${var.environment}-nat-gw" }
 }
-*/
+
 
 # STEP 5: Create Private Route Table pointing to NAT Gateway
 resource "aws_route_table" "private_rt" {
