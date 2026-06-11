@@ -9,7 +9,10 @@ RUN npm install
 # Copy the source code and build directories
 COPY ./public ./public
 COPY ./src ./src
-COPY .env.production ./ 2>/dev/null || true
+
+# 🚀 FIX: Automatically create the production env file on the fly
+# This ensures the compiler always finds it, even inside GitHub Actions!
+RUN touch .env.production && echo "REACT_APP_ENV=production" > .env.production
 
 # Compile the React application into static assets
 RUN npm run build
