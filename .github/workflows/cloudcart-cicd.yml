@@ -44,7 +44,7 @@ jobs:
             ./app/frontend
 
       - name: 5. Trivy Vulnerability Scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'image'
           image-ref: 'cloudcart-frontend:${{ github.sha }}'
