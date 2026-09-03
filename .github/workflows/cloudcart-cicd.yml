@@ -20,6 +20,7 @@ jobs:
   devsecops-pipeline:
     name: Code Quality, Security Scan, and Continuous Delivery
     runs-on: ubuntu-latest
+
     steps:
       - name: 1. Checkout Code
         uses: actions/checkout@v4
@@ -46,11 +47,11 @@ jobs:
       - name: 5. Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          scan-type: 'image'
-          image-ref: '${{ env.ECR_REPOSITORY }}:${{ github.sha }}'
-          format: 'table'
+          scan-type: image
+          image-ref: ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          format: table
           exit-code: 1
-          severity: 'CRITICAL,HIGH'
+          severity: CRITICAL,HIGH
           ignore-unfixed: true
 
       - name: 6. Configure AWS Credentials
@@ -60,10 +61,10 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: 7. Verify AWS Identity
-        run: aws sts get-caller-identity
+        run: |
+          aws sts get-caller-identity
 
       - name: 8. Login to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: 9. Build and Push Production Image
@@ -77,20 +78,64 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: 10. Update Helm Image (Secure Injection)
+      - name: 10. Update Helm Image
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          sed -i -E "s|(^[[:space:]]*repository:[[:space:]]*).*|\1${{ env.REGISTRY_URL }}/${{ env.ECR_REPOSITORY }}|g" helm/cloudcart/values.yaml
-          sed -i -E "s|(^[[:space:]]*tag:[[:space:]]*).*|\1\"$IMAGE_TAG\"|g" helm/cloudcart/values.yaml
+          python - <<'PY'
+          from pathlib import Path
+          import os
 
-      - name: 11. Show Updated Helm Values
-        run: cat helm/cloudcart/values.yaml
+          path = Path("helm/cloudcart/values.yaml")
+          lines = path.read_text().splitlines()
 
-      - name: 12. Commit Helm GitOps Update
+          repository = (
+              f"{os.environ['REGISTRY_URL']}/"
+              f"{os.environ['ECR_REPOSITORY']}"
+          )
+          tag = os.environ["IMAGE_TAG"]
+
+          in_image = False
+
+          for i, line in enumerate(lines):
+              stripped = line.strip()
+
+              if stripped == "image:":
+                  in_image = True
+                  continue
+
+              if in_image and stripped.startswith("repository:"):
+                  indent = line[:len(line) - len(line.lstrip())]
+                  lines[i] = f"{indent}repository: {repository}"
+                  continue
+
+              if in_image and stripped.startswith("tag:"):
+                  indent = line[:len(line) - len(line.lstrip())]
+                  lines[i] = f'{indent}tag: "{tag}"'
+                  continue
+
+              if in_image and stripped and not line.startswith((" ", "\t")):
+                  in_image = False
+
+          path.write_text("\n".join(lines) + "\n")
+          PY
+
+      - name: 11. Validate Helm Chart
+        run: |
+          helm lint ./helm/cloudcart
+
+      - name: 12. Show Updated Helm Values
+        run: |
+          cat helm/cloudcart/values.yaml
+
+      - name: 13. Commit Helm GitOps Update
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+
           git add helm/cloudcart/values.yaml
-          git commit -m "chore(gitops): update frontend image to ${{ github.sha }} [skip ci]" || true
+
+          git diff --cached --quiet || \
+            git commit -m "chore(gitops): update frontend image to ${{ github.sha }} [skip ci]"
+
           git push
