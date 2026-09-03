@@ -27,7 +27,6 @@ secret:
   DB_USERNAME: admin
   DB_PASSWORD: password123
 
-# Change 'hpa:' to 'autoscaling:'
 autoscaling:
   enabled: true
   minReplicas: 2
