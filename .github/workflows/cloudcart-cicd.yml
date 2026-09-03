@@ -14,14 +14,13 @@ permissions:
 env:
   AWS_REGION: ap-south-1
   ECR_REPOSITORY: cloudcart-frontend
+  REGISTRY_URL: 124502390077.dkr.ecr.ap-south-1.amazonaws.com
 
 jobs:
   devsecops-pipeline:
     name: Code Quality, Security Scan, and Continuous Delivery
     runs-on: ubuntu-latest
-
     steps:
-
       - name: 1. Checkout Code
         uses: actions/checkout@v4
         with:
@@ -37,17 +36,18 @@ jobs:
       - name: 3. Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: 4. Build Security Test Image
-        run: |
-          docker build \
-            -t cloudcart-frontend:${{ github.sha }} \
-            ./app/frontend
+      - name: 4. Build Local Image for Security Scan
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app/frontend
+          load: true
+          tags: ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
       - name: 5. Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'image'
-          image-ref: 'cloudcart-frontend:${{ github.sha }}'
+          image-ref: '${{ env.ECR_REPOSITORY }}:${{ github.sha }}'
           format: 'table'
           exit-code: 1
           severity: 'CRITICAL,HIGH'
@@ -56,31 +56,38 @@ jobs:
       - name: 6. Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: 7. Login to Amazon ECR
+      - name: 7. Verify AWS Identity
+        run: aws sts get-caller-identity
+
+      - name: 8. Login to Amazon ECR
+        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: 8. Build and Push Production Image
+      - name: 9. Build and Push Production Image
         uses: docker/build-push-action@v6
         with:
           context: ./app/frontend
           push: true
           tags: |
-            124502390077.dkr.ecr.ap-south-1.amazonaws.com/cloudcart-frontend:${{ github.sha }}
-            124502390077.dkr.ecr.ap-south-1.amazonaws.com/cloudcart-frontend:latest
+            ${{ env.REGISTRY_URL }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ env.REGISTRY_URL }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: 9. Update Helm Image
+      - name: 10. Update Helm Image (Secure Injection)
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          sed -i -E "s|(^[[:space:]]*repository:[[:space:]]*).*|\1124502390077.dkr.ecr.ap-south-1.amazonaws.com/cloudcart-frontend|g" helm/cloudcart/values.yaml
-          sed -i -E "s|(^[[:space:]]*tag:[[:space:]]*).*|\1\"${{ github.sha }}\"|g" helm/cloudcart/values.yaml
+          sed -i -E "s|(^[[:space:]]*repository:[[:space:]]*).*|\1${{ env.REGISTRY_URL }}/${{ env.ECR_REPOSITORY }}|g" helm/cloudcart/values.yaml
+          sed -i -E "s|(^[[:space:]]*tag:[[:space:]]*).*|\1\"$IMAGE_TAG\"|g" helm/cloudcart/values.yaml
 
-      - name: 10. Show Updated Helm Values
-        run: |
-          cat helm/cloudcart/values.yaml
+      - name: 11. Show Updated Helm Values
+        run: cat helm/cloudcart/values.yaml
 
-      - name: 11. Commit Helm GitOps Update
+      - name: 12. Commit Helm GitOps Update
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
