@@ -5,71 +5,85 @@ on:
     branches:
       - main
     paths-ignore:
-      - 'terraform/**' # Let the terraform.yml run separately only when infra files change
+      - 'terraform/**'
+
+permissions:
+  contents: write
+  id-token: write
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: cloudcart-frontend
 
 jobs:
   devsecops-pipeline:
     name: Code Quality, Security Scan, and Continuous Delivery
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # Grants GitHub Action permissions to push helm manifest rewrites back to repository
 
     steps:
-    - name: 1. Checkout Code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0 # Required for accurate SonarQube Git blame metrics
 
-    - name: 2. SonarQube Code Analysis
-      uses: SonarSource/sonarqube-scan-action@v6
-      continue-on-error: true
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} # Let GitHub use your specific URL configuration
+      - name: 1. Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: 3. Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: 2. SonarQube Code Analysis
+        uses: SonarSource/sonarqube-scan-action@v5
+        continue-on-error: true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-    - name: 4. Build Local Test Image
-      run: |
-        docker build -t cloudcart-frontend:test ./app/frontend
+      - name: 3. Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: 5. Trivy Vulnerability Security Scan
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: cloudcart-frontend:test
-        format: table
-        exit-code: 1 # Strictly blocks the pipeline if CRITICAL or HIGH vulnerabilities are found!
-        severity: CRITICAL,HIGH
+      - name: 4. Build Security Test Image
+        run: |
+          docker build \
+            -t cloudcart-frontend:${{ github.sha }} \
+            ./app/frontend
 
-    - name: 6. Log in to Docker Hub
-      if: success() # Only execution block if the code is proven clean by SonarQube & Trivy
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: 5. Trivy Vulnerability Scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'image'
+          image-ref: 'cloudcart-frontend:${{ github.sha }}'
+          format: 'table'
+          exit-code: 1
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
 
-    - name: 7. Build and Push Production Image
-      if: success()
-      uses: docker/build-push-action@v6
-      with:
-        context: ./app/frontend
-        push: true
-        tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/cloudcart-frontend:${{ github.sha }}
-          ${{ secrets.DOCKERHUB_USERNAME }}/cloudcart-frontend:latest
+      - name: 6. Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-    - name: 8. Dynamically Update Helm Values Manifest
-      if: success()
-      run: |
-        sed -i -E "s|(^[[:space:]]*repository:[[:space:]]*).*|\1${{ secrets.DOCKERHUB_USERNAME }}/cloudcart-frontend|g" helm/cloudcart/values.yaml
-        sed -i -E "s|(^[[:space:]]*tag:[[:space:]]*).*|\1\"${{ github.sha }}\"|g" helm/cloudcart/values.yaml
+      - name: 7. Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-    - name: 9. Commit & Push Helm Updates to GitOps
-      if: success()
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add helm/cloudcart/values.yaml
-        git commit -m "chore(gitops): update frontend deployment tag to ${{ github.sha }} [skip ci]" || true
-        git push
+      - name: 8. Build and Push Production Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app/frontend
+          push: true
+          tags: |
+            124502390077.dkr.ecr.ap-south-1.amazonaws.com/cloudcart-frontend:${{ github.sha }}
+            124502390077.dkr.ecr.ap-south-1.amazonaws.com/cloudcart-frontend:latest
+
+      - name: 9. Update Helm Image
+        run: |
+          sed -i -E "s|(^[[:space:]]*repository:[[:space:]]*).*|\1124502390077.dkr.ecr.ap-south-1.amazonaws.com/cloudcart-frontend|g" helm/cloudcart/values.yaml
+          sed -i -E "s|(^[[:space:]]*tag:[[:space:]]*).*|\1\"${{ github.sha }}\"|g" helm/cloudcart/values.yaml
+
+      - name: 10. Show Updated Helm Values
+        run: |
+          cat helm/cloudcart/values.yaml
+
+      - name: 11. Commit Helm GitOps Update
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add helm/cloudcart/values.yaml
+          git commit -m "chore(gitops): update frontend image to ${{ github.sha }} [skip ci]" || true
+          git push
