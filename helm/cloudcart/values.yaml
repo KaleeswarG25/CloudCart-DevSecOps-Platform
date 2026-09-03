@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: 124502390077.dkr.ecr.ap-south-1.amazonaws.com/cloudcart-frontend
-  tag: "daaf93cddd8c708c51aedee9dbb32b780bb87dc4"
+  tag: "3a7665250e3acb351c49085d8026908ad6e49b7c"
   pullPolicy: Always
 
 service:
